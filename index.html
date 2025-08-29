@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KSFC</title>
+<title>CordDis</title>
 <link rel="icon" type="image/png" href="https://file.garden/Z43SqDt67TpUFO8v/retouch_2025031817385428.png">
 
 <style>
@@ -26,6 +26,7 @@
   .chat-input { display: flex; gap: 8px; align-items: center; }
   .chat-input input[type="text"] { flex-grow: 1; }
   .chat-input #imageUpload { display: none; }
+  .message img { max-width: 100%; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -86,7 +87,6 @@ function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
   return match ? decodeURIComponent(match[2]) : null;
 }
-
 function setCookie(name, value, days) {
   let expires = "";
   if(days){
@@ -122,6 +122,14 @@ window.sendMessage = function() {
   msgInput.value='';
 };
 
+// Send message on Enter key
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault(); // prevent newline
+    sendMessage();
+  }
+});
+
 window.loadMessages = function() {
   const chatBox = document.getElementById('chatBox');
   chatBox.innerHTML='';
@@ -132,7 +140,7 @@ window.loadMessages = function() {
     messages.forEach(message=>{
       let div = document.createElement('div');
       div.classList.add('message');
-      const msgTime = new Date(message.timestamp.seconds*1000).toLocaleTimeString();
+      let msgTime = message.timestamp?.seconds ? new Date(message.timestamp.seconds*1000).toLocaleTimeString() : new Date(message.timestamp).toLocaleTimeString();
       if(message.text){
         div.innerHTML=`<strong>${message.user}</strong>: ${message.text} <span class="message-time">(${msgTime})</span>`;
       } else if(message.image){
@@ -140,6 +148,7 @@ window.loadMessages = function() {
       }
       chatBox.appendChild(div);
     });
+    chatBox.scrollTop = chatBox.scrollHeight;
   });
 };
 
@@ -151,6 +160,28 @@ window.switchRoom = function(room){
 
 window.toggleDarkMode = function(){ document.body.classList.toggle('dark-mode'); };
 
+// Image sending (Base64)
+window.sendImage = function() {
+  if (!currentUser) return;
+  const fileInput = document.getElementById('imageUpload');
+  if (!fileInput.files.length) return;
+  const file = fileInput.files[0];
+  
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const base64 = e.target.result; // Base64 string
+    
+    addDoc(collection(db,currentRoom),{
+      image: base64,
+      user: currentUser.displayName,
+      timestamp: new Date()
+    });
+    
+    fileInput.value = '';
+  };
+  reader.readAsDataURL(file);
+};
+
 // Auto login if cookie exists
 const savedName = getCookie("chatName");
 if(savedName){
@@ -158,11 +189,7 @@ if(savedName){
   document.getElementById('loginDiv').style.display='none';
   document.getElementById('chatDiv').style.display='block';
   loadMessages();
-};
-
-// Optional: placeholder for sendImage function
-window.sendImage = function() { alert("Image sending not implemented yet."); };
-
+}
 </script>
 </body>
 </html>
